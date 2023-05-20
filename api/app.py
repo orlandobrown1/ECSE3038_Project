@@ -17,6 +17,7 @@ app = FastAPI()
 
 origins = [
     "https://simple-smart-hub-client.netlify.app",
+    "https://orlando-project.onrender.com",
     "http://127.0.0.1:8000"
 ]
 
