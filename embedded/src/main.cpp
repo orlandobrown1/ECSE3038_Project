@@ -2,31 +2,36 @@
 #include <Wifi.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
-#include "env.h"
+#include "env.h" 
+
+#define endpoint "orlando-project.onrender.com"
+
+#define fanPin 22
+#define lightPin 23
+#define presencePin 24
 
 
+float getTemp(){
 
-const int fan_Pin = 22;
-const int light_Pin = 23;
-const int presence_pin = 24;
-
-float getvolt(){
-  return random(21.0, 33.0);
+  return random(21.1,33.1);
 }
-float getpresence(){
-  return random(0, 1);
+
+bool getpresence(){
+
+  return random(0,1);
 }
 
 void setup() {
+
   Serial.begin(9600);
-  pinMode(fan_Pin, OUTPUT);
-  pinMode(light_Pin, OUTPUT);
-  pinMode(presence_pin, OUTPUT);
 
+	pinMode(fanPin,OUTPUT);
+  pinMode(lightPin,OUTPUT);
+
+	// WiFi_SSID and WIFI_PASS should be stored in the env.h
   WiFi.begin(WIFI_SSID, WIFI_PASS);
-  
   Serial.println("");
-
+	// Connect to wifi
   Serial.println("Connecting");
   while(WiFi.status() != WL_CONNECTED) {
     delay(500);
@@ -38,61 +43,59 @@ void setup() {
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
+  //Check WiFi connection status
   if(WiFi.status()== WL_CONNECTED){
+    Serial.println("");
+    Serial.println("");
     HTTPClient http;
-    
-    String http_response;
-
-
-    String url = "https://orlando-lab6.onrender.com/api/temperature";
+  
+    // Establish a connection to the server
+    String url = "https://" + String(endpoint) + "/values";
     http.begin(url);
-      
-      // Specify content-type header
-    
-      http.addHeader("Content-Type", "application/json");
-
-      StaticJsonDocument<1024> doc;
-      String httpRequestData;
-
-      // Serialise JSON object into a string to be sent to the API
-    
-      doc["temperature"] = getvolt();
-      doc["presence"]= getpresence();
+    http.addHeader("Content-type", "application/json");
 
 
-      // convert JSON document, doc, to string and copies it into httpRequestData
-      serializeJson(doc, httpRequestData);
 
-      // Send HTTP PUT request
-      int httpResponseCode = http.PUT(httpRequestData);
-      String http_response;
+    // Specify content-type header
+    //http.addHeader("Content-Type", "application/json");
 
-      // check reuslt of PUT request. negative response code means server wasn't reached
-      if (httpResponseCode>0) {
-        Serial.print("HTTP Response code: ");
-        Serial.println(httpResponseCode);
+    StaticJsonDocument<1024> docput;
+    String httpRequestData;
 
-        Serial.print("HTTP Response from server: ");
-        http_response = http.getString();
-        Serial.println(http_response);
-      }
-      else {
-        Serial.print("Error code: ");
-        Serial.println(httpResponseCode);
-      }
-      delay(2000);
-      
-      http.end(); 
-      url = "https://orlando-lab6.onrender.com/api/temperature";    
-    http.begin(url);
-    httpResponseCode = http.GET();
+    // Serialise JSON object into a string to be sent to the API
   
 
+    docput["temperature"] = getTemp();
+    docput["presence"] = getpresence();
+  
+
+    // convert JSON document, doc, to string and copies it into httpRequestData
+    serializeJson(docput, httpRequestData);
+
+    // Send HTTP PUT request
+    int httpResponseCode = http.POST(httpRequestData);
+    String http_response;
+
+    // check reuslt of PUT request. negative response code means server wasn't reached
+    if (httpResponseCode>0) {
+      Serial.print("HTTP Response code: ");
+      Serial.println(httpResponseCode);
+
+      Serial.print("HTTP Response from server: ");
+      http_response = http.getString();
+      Serial.println(http_response);
+    }
+    else {
+      Serial.print("Error code: ");
+      Serial.println(httpResponseCode);
+    }
+
+    http.end();
 
 
-
-    int httpResponseCode = http.GET();
+    url = "https://" + String(endpoint) + "/state";    
+    http.begin(url);
+    httpResponseCode = http.GET();
 
     Serial.println("");
     Serial.println("");
@@ -108,36 +111,35 @@ void loop() {
       else {
         Serial.print("Error code: ");
         Serial.println(httpResponseCode);
-      }
+    }
+ 
+    StaticJsonDocument<1024> docget;
 
+    DeserializationError error = deserializeJson(docget, http_response);
 
-      StaticJsonDocument<1024> doc;
+    if (error) {
+      Serial.print("deserializeJson() failed: ");
+      Serial.println(error.c_str());
+      return;
+    }
+    
+    bool temp = docget["fan"]; 
+    bool light= docget["light"]; 
+    bool presence= docget["presence"]; 
 
-      DeserializationError error = deserializeJson(doc, http_response);
-
-      if (error) {
-        Serial.print("deserializeJson() failed: ");
-        Serial.println(error.c_str());
-        return;
-      }
-      
-      bool temp = doc["temperature"]; 
-      digitalWrite(fan_Pin, temp);
-
-      bool sst = doc["light"]; 
-      digitalWrite(light_Pin, sst);
-
-      bool set = doc["presence"];
-      digitalWrite(presence_pin, set); 
-
-
+    digitalWrite(fanPin,temp);
+    digitalWrite(lightPin,light);
+    digitalWrite(presencePin,presence);
+    
+    // Free resources
     http.end();
-
-   }
+  }
   else {
-    return;
+    Serial.println("WiFi Disconnected");
   }
 }
+
+
 
 
 
