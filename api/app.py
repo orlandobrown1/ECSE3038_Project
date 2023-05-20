@@ -35,7 +35,7 @@ db = client.project
 sensor_readings = db["sensor_readings"]
 values = db ["values"]
 
-pydantic.json.ENCODERS_BY_TYPE[additionectId]=str
+pydantic.json.ENCODERS_BY_TYPE[ObjectId]=str
 
 
 
